@@ -7,7 +7,12 @@ import android.support.v4.app.ActivityCompat
 import android.support.v4.content.ContextCompat
 import android.support.v7.app.AppCompatActivity
 import android.util.Log
+import android.view.View
 import android.widget.TextView
+import com.jjoe64.graphview.GraphView
+import com.jjoe64.graphview.series.DataPoint
+import com.jjoe64.graphview.series.LineGraphSeries
+
 
 class MainActivity : AppCompatActivity() {
 
@@ -17,6 +22,8 @@ class MainActivity : AppCompatActivity() {
     lateinit var samplingLoop: SamplingLoop
 
     lateinit var textView: TextView
+    lateinit var graph: GraphView
+    lateinit var graphSeries: LineGraphSeries<DataPoint>
 
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
@@ -25,6 +32,9 @@ class MainActivity : AppCompatActivity() {
         handlePermissions()
 
         textView = findViewById(R.id.freq)
+        graph = findViewById<View>(R.id.graph) as GraphView
+        graphSeries = LineGraphSeries<DataPoint>()
+        graph.addSeries(graphSeries)
     }
 
     override fun onResume() {
@@ -89,7 +99,13 @@ class MainActivity : AppCompatActivity() {
         samplingLoop.start()
     }
 
-    fun updateTextView(text: String) {
+    fun updateTextView(text: String, amplitudes: DoubleArray) {
         textView.text = text
+        var x = 0.0
+        graphSeries.resetData(amplitudes.map { y: Double ->
+            x++
+            DataPoint(x, Math.log10(y))
+        }.toTypedArray())
+
     }
 }

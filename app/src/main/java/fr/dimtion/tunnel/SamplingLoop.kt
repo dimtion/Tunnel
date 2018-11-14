@@ -6,6 +6,7 @@ import android.media.MediaRecorder
 import android.util.Log
 import ca.uol.aig.fftpack.RealDoubleFFT
 import java.util.concurrent.ArrayBlockingQueue
+import kotlin.math.absoluteValue
 import kotlin.math.pow
 
 class SamplingLoop(val activity: MainActivity) : Thread() {
@@ -13,10 +14,10 @@ class SamplingLoop(val activity: MainActivity) : Thread() {
     val TAG = "SamplingLoop"
 
     val sampleRate = 44100
-    val sampleDuration = 2000  // in ms
+    val sampleDuration = 200  // in ms
     val minBuffSize = sampleRate * sampleDuration / 1000
 
-    val lastFrequencyStoreSize = 3
+    val lastFrequencyStoreSize = 4
 
     private lateinit var recorder: AudioRecord
 
@@ -77,9 +78,6 @@ class SamplingLoop(val activity: MainActivity) : Thread() {
             pushFreq(maxFreq)
 
             // Log.d(TAG, "READ LEN: $readLen")
-            activity.runOnUiThread {
-                activity.updateTextView("%.1f".format(lastFreqs.average()))
-            }
 
             i++
             // if (i > 1000) {
@@ -91,21 +89,32 @@ class SamplingLoop(val activity: MainActivity) : Thread() {
     }
 
     private fun normalizeSamples(inputSamples: ShortArray): DoubleArray {
-        return inputSamples.map { x: Short -> x / (2.0.pow(16) - 1) }.toDoubleArray()
+        return inputSamples
+            .map { x: Short -> x / (2.0.pow(16) - 1) }
+            .toDoubleArray()
     }
 
     private fun calculateMaxFreq(fft: RealDoubleFFT, inputSamples: DoubleArray): Double {
         fft.ft(inputSamples)
         var maxId = 0
         var max = 0.0
-        inputSamples.forEachIndexed { i, x ->
+
+        val m = inputSamples.size / 2
+        val realPart = inputSamples
+            .slice(0 until m step 2)
+            .map { x -> x.absoluteValue }
+            .toDoubleArray()
+        realPart.forEachIndexed { i, x ->
             if (x > max) {
                 max = x
                 maxId = i
             }
         }
         Log.d(TAG, "$maxId $max")
-        return maxId * sampleRate.toDouble() / inputSamples.size.toDouble() / 2.0
+        activity.runOnUiThread {
+            activity.updateTextView("%.1f\nhello".format(lastFreqs.average()), realPart)
+        }
+        return maxId * sampleRate.toDouble() / realPart.size.toDouble() / 4.0
     }
 
     private fun pushFreq(freq: Double) {
